@@ -14,16 +14,22 @@ clean reference setup for debugging a Supabase connection.
 ## Local setup
 
 1. **Create a Supabase project** at [supabase.com](https://supabase.com).
-2. **Create the demo table.** In the Supabase Dashboard → SQL Editor, paste and
-   run the contents of [`supabase/schema.sql`](./supabase/schema.sql). This
-   creates a `messages` table, seeds one row, and adds a public read RLS policy.
+2. **Apply the schema (migrations).** The table lives in code under
+   [`supabase/migrations/`](./supabase/migrations). Apply it to your remote DB
+   with the Supabase CLI (no manual SQL paste):
+   ```bash
+   pnpm supabase db push --db-url "postgresql://postgres:<DB-PASSWORD>@db.<project-ref>.supabase.co:5432/postgres"
+   ```
+   This creates the `messages` table, seeds one row, and adds a public read RLS
+   policy. (Alternatively, link once with `pnpm supabase link` then
+   `pnpm supabase db push --linked`.)
 3. **Set env vars.** Copy the example file and fill it in:
    ```bash
    cp .env.local.example .env.local
    ```
    Get the values from Supabase Dashboard → Project Settings → API:
    - `NEXT_PUBLIC_SUPABASE_URL` → "Project URL"
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` → the public **anon** key
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` → the public **anon / publishable** key
 4. **Install & run:**
    ```bash
    pnpm install
@@ -62,7 +68,12 @@ Connection problems almost always come from one of these — work top to bottom:
 - [ ] **Using the `anon` key**, not the `service_role` key (never ship
       service_role to the browser) and not a JWT/secret from somewhere else.
 - [ ] **The table exists** and the name/columns in the query match
-      (`messages` here). A 404/relation-not-found error points here.
+      (`messages` here). A 404/relation-not-found error ("Could not find the
+      table … in schema cache") points here.
+- [ ] **Migrations were actually applied to the *remote* DB.** Having a
+      migration file in the repo does nothing on its own — `supabase db push`
+      (or running it in the SQL Editor) is what creates the table. Local-only
+      migrations that never got pushed are a classic "it works on my machine".
 - [ ] **RLS policy allows the read.** Row Level Security is ON by default; with
       no `select` policy the anon key returns **zero rows and no error** — looks
       like an "empty" table. This is the single most common gotcha.
